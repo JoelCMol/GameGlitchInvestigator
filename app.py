@@ -118,6 +118,9 @@ with col3:
 if new_game:
     st.session_state.attempts = 0
     st.session_state.secret = random.randint(1, 100)
+    # Fix: reset status and history so the game doesn't immediately stop after game over
+    st.session_state.status = "playing"
+    st.session_state.history = []
     st.success("New game started.")
     st.rerun()
 
