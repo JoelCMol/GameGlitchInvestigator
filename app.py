@@ -94,12 +94,13 @@ st.subheader("Make a guess")
 st.info(
     #Bug was: The prompt didn't update with the correct range and attempt limit based on difficulty. Now it dynamically shows the correct range and attempts left.
     f"Guess a number between {low} and {high}. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
+    #if st.session_state.attempts < attempt_limit else 0
+    f"Attempts left: {attempt_limit - st.session_state.attempts }."
 )
 
 with st.expander("Developer Debug Info"):
     st.write("Secret:", st.session_state.secret)
-    st.write("Attempts:", st.session_state.attempts)
+    st.write("Attempts:", st.session_state.attempts + 1)
     st.write("Score:", st.session_state.score)
     st.write("Difficulty:", difficulty)
     st.write("History:", st.session_state.history)
