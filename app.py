@@ -1,52 +1,6 @@
 import random
 import streamlit as st
-from logic_utils import check_guess
-
-def get_range_for_difficulty(difficulty: str):
-    if difficulty == "Easy":
-        return 1, 20
-    if difficulty == "Normal":
-        return 1, 100
-    if difficulty == "Hard":
-        return 1, 50
-    return 1, 100
-
-
-def parse_guess(raw: str):
-    if raw is None:
-        return False, None, "Enter a guess."
-
-    if raw == "":
-        return False, None, "Enter a guess."
-
-    try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
-    except Exception:
-        return False, None, "That is not a number."
-
-    return True, value, None
-
-
-
-def update_score(current_score: int, outcome: str, attempt_number: int):
-    if outcome == "Win":
-        points = 100 - 10 * (attempt_number + 1)
-        if points < 10:
-            points = 10
-        return current_score + points
-
-    if outcome == "Too High":
-        if attempt_number % 2 == 0:
-            return current_score + 5
-        return current_score - 5
-
-    if outcome == "Too Low":
-        return current_score - 5
-
-    return current_score
+from logic_utils import get_range_for_difficulty, parse_guess, check_guess, update_score
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
@@ -78,7 +32,7 @@ if "secret" not in st.session_state:
 
 # Bug was: st.session_state.attempts to zero instead of one, which caused the first guess to be counted as attempt 0 and messed up the scoring and attempt limit logic. Now it initializes to zero so the first guess is attempt 1.
 if "attempts" not in st.session_state:
-    st.session_state.attempts = 0
+    st.session_state.attempts = 0 # BUG FIX: was initialized to 1, causing an off-by-one error where the first submit counted as attempt 2 and "Attempts left" showed one fewer than it should.
 
 if "score" not in st.session_state:
     st.session_state.score = 0
@@ -120,15 +74,16 @@ with col3:
 
 if new_game:
     st.session_state.attempts = 0
-    st.session_state.secret = random.randint(1, 100)
-    # Fix: reset status and history so the game doesn't immediately stop after game over
-    st.session_state.status = "playing"
-    st.session_state.history = []
+    st.session_state.secret = random.randint(low, high)  # BUG FIX: was hardcoded randint(1, 100); now respects the selected difficulty range.
+    st.session_state.score = 0       # BUG FIX: score was never reset on new game, so it carried over from the previous round.
+    st.session_state.status = "playing"  # BUG FIX: status was never reset, so a won/lost game could never be replayed without a page refresh.
+    st.session_state.history = []    # BUG FIX: history was never cleared on new game, polluting the debug panel with old guesses.
     st.success("New game started.")
     st.rerun()
 
 if st.session_state.status != "playing":
     if st.session_state.status == "won":
+        st.balloons()
         st.success("You already won. Start a new game to play again.")
     else:
         st.error("Game over. Start a new game to try again.")
@@ -145,10 +100,11 @@ if submit:
     else:
         st.session_state.history.append(guess_int)
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
-        else:
-            secret = st.session_state.secret
+        # BUG FIX: Removed the even/odd type-switching. secret is now always the integer from session state, so check_guess gets consistent types on every attempt
+        # if st.session_state.attempts % 2 == 0:
+        #    secret = str(st.session_state.secret)
+        # else:
+        secret = st.session_state.secret
 
         outcome, message = check_guess(guess_int, secret)
 
@@ -176,6 +132,7 @@ if submit:
                     f"The secret was {st.session_state.secret}. "
                     f"Score: {st.session_state.score}"
                 )
+    st.rerun() # BUG FIX: This triggers an immediate second rerun after all session state updates, so the attempts count and history will display correctly right away.
 
 st.divider()
 st.caption("Built by an AI that claims this code is production-ready.")
